@@ -41,4 +41,18 @@ export const updatePlace = (id, data) => api.put(`/places/${id}`, data);
 export const deletePlace = (id) => api.delete(`/places/${id}`);
 export const togglePlace = (id) => api.patch(`/places/${id}/toggle`);
 
+// ============ ADMIN - USUARIOS ============
+export const getUsers = () => api.get('/users');
+export const createUser = (data) => api.post('/users', data);
+export const updateUser = (id, data) => api.put(`/users/${id}`, data);
+export const changeUserRole = (id, role) => api.patch(`/users/${id}/role`, { role });
+export const toggleUser = (id) => api.patch(`/users/${id}/toggle`);
+export const deleteUser = (id) => api.delete(`/users/${id}`);
+
+// ============ FAVORITOS (usuarios logueados) ============
+export const getMyFavorites = () => api.get('/favorites');
+export const addFavorite = (cityId) => api.post('/favorites', { cityId });
+export const removeFavorite = (cityId) => api.delete(`/favorites/${cityId}`);
+export const checkFavorite = (cityId) => api.get(`/favorites/check/${cityId}`);
+
 export default api;

@@ -409,3 +409,28 @@ body {
   padding: 0.5rem 0.5rem;
   color: #6b7280;
 }
+
+/* Favoritos */
+.favorites-page {
+  padding: 1rem 0;
+}
+
+.favorites-page h1 {
+  color: #1e3a8a;
+  margin-bottom: 0.5rem;
+}
+
+.empty-favorites {
+  text-align: center;
+  padding: 4rem 2rem;
+  background: white;
+  border-radius: 12px;
+  margin-top: 2rem;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+}
+
+.empty-favorites p {
+  margin-bottom: 1.5rem;
+  color: #666;
+  font-size: 1.1rem;
+}

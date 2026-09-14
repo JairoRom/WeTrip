@@ -4,6 +4,7 @@ import { Link, useNavigate } from 'react-router-dom';
 function Navbar() {
   const navigate = useNavigate();
   const token = localStorage.getItem('token');
+  const user = JSON.parse(localStorage.getItem('user') || '{}');
 
   const handleLogout = () => {
     localStorage.removeItem('token');
@@ -21,7 +22,18 @@ function Navbar() {
           <li><Link to="/">Inicio</Link></li>
           {token ? (
             <>
-              <li><Link to="/admin">Admin</Link></li>
+              <li><Link to="/favorites">⭐ Favoritos</Link></li>
+              {user.role === 'admin' && (
+                <>
+                  <li><Link to="/admin">Admin</Link></li>
+                  <li><Link to="/admin/users">Usuarios</Link></li>
+                </>
+              )}
+              <li>
+                <span style={{ color: 'white', marginRight: '0.5rem' }}>
+                  👤 {user.username}
+                </span>
+              </li>
               <li>
                 <button onClick={handleLogout} className="btn-logout">
                   Cerrar sesión

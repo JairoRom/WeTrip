@@ -1,13 +1,18 @@
 import React, { useEffect, useState } from 'react';
-import { useParams, Link } from 'react-router-dom';
-import { getCityDetail } from '../services/api';
+import { useParams, Link, useNavigate } from 'react-router-dom';
+import { getCityDetail, addFavorite, removeFavorite, checkFavorite } from '../services/api';
 import MapView from '../components/MapView';
 
 function CityDetail() {
   const { id } = useParams();
+  const navigate = useNavigate();
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [isFavorite, setIsFavorite] = useState(false);
+  const [favLoading, setFavLoading] = useState(false);
+
+  const token = localStorage.getItem('token');
 
   useEffect(() => {
     const loadCityDetail = async () => {
@@ -16,6 +21,16 @@ function CityDetail() {
         const response = await getCityDetail(id);
         setData(response.data.data);
         setError(null);
+
+        // Verificar si es favorito (solo si está logueado)
+        if (token) {
+          try {
+            const favRes = await checkFavorite(id);
+            setIsFavorite(favRes.data.data.isFavorite);
+          } catch (err) {
+            console.warn('Error al verificar favorito:', err);
+          }
+        }
       } catch (err) {
         console.error('Error cargando ciudad:', err);
         setError('No se pudo cargar la información de la ciudad');
@@ -25,7 +40,31 @@ function CityDetail() {
     };
 
     loadCityDetail();
-  }, [id]);
+  }, [id, token]);
+
+  const handleToggleFavorite = async () => {
+    if (!token) {
+      alert('Debes iniciar sesión para guardar favoritos');
+      navigate('/login');
+      return;
+    }
+
+    setFavLoading(true);
+    try {
+      if (isFavorite) {
+        await removeFavorite(id);
+        setIsFavorite(false);
+      } else {
+        await addFavorite(parseInt(id));
+        setIsFavorite(true);
+      }
+    } catch (err) {
+      console.error(err);
+      alert(err.response?.data?.message || 'Error al gestionar favorito');
+    } finally {
+      setFavLoading(false);
+    }
+  };
 
   if (loading) return <p className="loading">Cargando información...</p>;
   if (error) return <p className="error">{error}</p>;
@@ -37,10 +76,32 @@ function CityDetail() {
     <div className="city-detail">
       <Link to="/" className="back-link">← Volver</Link>
 
-      <header className="city-header">
+      <header className="city-header" style={{ position: 'relative' }}>
         <h1>{city.name}</h1>
         <p className="country">{city.country}</p>
         {city.description && <p className="description">{city.description}</p>}
+
+        {/* Botón de favorito */}
+        <button
+          onClick={handleToggleFavorite}
+          disabled={favLoading}
+          style={{
+            position: 'absolute',
+            top: '2rem',
+            right: '2rem',
+            background: isFavorite ? '#fef3c7' : 'white',
+            border: '2px solid #f59e0b',
+            color: '#f59e0b',
+            padding: '0.6rem 1.2rem',
+            borderRadius: '8px',
+            cursor: 'pointer',
+            fontSize: '1rem',
+            fontWeight: 'bold'
+          }}
+          title={isFavorite ? 'Quitar de favoritos' : 'Añadir a favoritos'}
+        >
+          {isFavorite ? '⭐ Guardada' : '☆ Guardar'}
+        </button>
       </header>
 
       {weather && (
