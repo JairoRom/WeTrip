@@ -19,7 +19,7 @@ api.interceptors.request.use((config) => {
 });
 
 // ENDPOINTS PÚBLICOS
-export const getCities = () => api.get('/cities');
+export const getCities = (params = {}) => api.get('/cities', { params });
 export const getCityById = (id) => api.get(`/cities/${id}`);
 export const getCityDetail = (id) => api.get(`/city-detail/${id}`);
 export const getWeather = (city) => api.get(`/weather/${city}`);

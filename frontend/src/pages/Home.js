@@ -7,16 +7,27 @@ function Home() {
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [pagination, setPagination] = useState({ total: 0, totalPages: 1, currentPage: 1, limit: 20 });
+  const [debouncedSearch, setDebouncedSearch] = useState('');
 
+  // Debounce: esperar 400ms después de que el usuario deje de escribir
   useEffect(() => {
-    loadCities();
-  }, []);
+    const timer = setTimeout(() => setDebouncedSearch(search), 400);
+    return () => clearTimeout(timer);
+  }, [search]);
 
-  const loadCities = async () => {
+  // Cargar ciudades cuando cambia la página o la búsqueda
+  useEffect(() => {
+    loadCities(pagination.currentPage, debouncedSearch);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pagination.currentPage, debouncedSearch]);
+
+  const loadCities = async (page = 1, searchTerm = '') => {
     try {
       setLoading(true);
-      const response = await getCities();
+      const response = await getCities({ page, limit: 20, search: searchTerm });
       setCities(response.data.data);
+      setPagination(response.data.pagination);
       setError(null);
     } catch (err) {
       console.error('Error cargando ciudades:', err);
@@ -26,10 +37,45 @@ function Home() {
     }
   };
 
-  const filteredCities = cities.filter((city) =>
-    city.name.toLowerCase().includes(search.toLowerCase()) ||
-    city.country.toLowerCase().includes(search.toLowerCase())
-  );
+  const handleSearchChange = (e) => {
+    setSearch(e.target.value);
+    setPagination(prev => ({ ...prev, currentPage: 1 })); // Volver a la página 1 al buscar
+  };
+
+  const goToPage = (page) => {
+    if (page >= 1 && page <= pagination.totalPages) {
+      setPagination(prev => ({ ...prev, currentPage: page }));
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  };
+
+  // Generar botones de paginación (máximo 7 visibles)
+  const getPageNumbers = () => {
+    const { currentPage, totalPages } = pagination;
+    const pages = [];
+    const maxVisible = 7;
+
+    if (totalPages <= maxVisible) {
+      for (let i = 1; i <= totalPages; i++) pages.push(i);
+    } else {
+      if (currentPage <= 4) {
+        for (let i = 1; i <= 5; i++) pages.push(i);
+        pages.push('...');
+        pages.push(totalPages);
+      } else if (currentPage >= totalPages - 3) {
+        pages.push(1);
+        pages.push('...');
+        for (let i = totalPages - 4; i <= totalPages; i++) pages.push(i);
+      } else {
+        pages.push(1);
+        pages.push('...');
+        for (let i = currentPage - 1; i <= currentPage + 1; i++) pages.push(i);
+        pages.push('...');
+        pages.push(totalPages);
+      }
+    }
+    return pages;
+  };
 
   return (
     <div className="home">
@@ -42,7 +88,7 @@ function Home() {
             type="text"
             placeholder="Buscar ciudad o país..."
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            onChange={handleSearchChange}
             className="search-input"
           />
         </div>
@@ -54,26 +100,63 @@ function Home() {
         
         {!loading && !error && (
           <>
-            <h2>Ciudades disponibles ({filteredCities.length})</h2>
-            {filteredCities.length === 0 ? (
+            <h2>Ciudades disponibles ({pagination.total})</h2>
+            {cities.length === 0 ? (
               <p className="no-results">No se encontraron ciudades</p>
             ) : (
-              <div className="cities-grid">
-                {filteredCities.map((city) => (
-                  <Link to={`/city/${city.id}`} key={city.id} className="city-card">
-                    {city.image && (
-                      <img src={city.image} alt={city.name} className="city-image" />
-                    )}
-                    <div className="city-info">
-                      <h3>{city.name}</h3>
-                      <p className="country">{city.country}</p>
-                      {city.description && (
-                        <p className="description">{city.description.substring(0, 100)}...</p>
+              <>
+                <div className="cities-grid">
+                  {cities.map((city) => (
+                    <Link to={`/city/${city.id}`} key={city.id} className="city-card">
+                      {city.image && (
+                        <img src={city.image} alt={city.name} className="city-image" />
                       )}
-                    </div>
-                  </Link>
-                ))}
-              </div>
+                      <div className="city-info">
+                        <h3>{city.name}</h3>
+                        <p className="country">{city.country}</p>
+                        {city.description && (
+                          <p className="description">{city.description.substring(0, 100)}...</p>
+                        )}
+                      </div>
+                    </Link>
+                  ))}
+                </div>
+
+                {/* Paginación */}
+                {pagination.totalPages > 1 && (
+                  <div className="pagination">
+                    <button
+                      onClick={() => goToPage(pagination.currentPage - 1)}
+                      disabled={pagination.currentPage === 1}
+                      className="pagination-btn"
+                    >
+                      ← Anterior
+                    </button>
+
+                    {getPageNumbers().map((page, index) => (
+                      page === '...' ? (
+                        <span key={`dots-${index}`} className="pagination-dots">...</span>
+                      ) : (
+                        <button
+                          key={page}
+                          onClick={() => goToPage(page)}
+                          className={`pagination-btn ${page === pagination.currentPage ? 'active' : ''}`}
+                        >
+                          {page}
+                        </button>
+                      )
+                    ))}
+
+                    <button
+                      onClick={() => goToPage(pagination.currentPage + 1)}
+                      disabled={pagination.currentPage === pagination.totalPages}
+                      className="pagination-btn"
+                    >
+                      Siguiente →
+                    </button>
+                  </div>
+                )}
+              </>
             )}
           </>
         )}

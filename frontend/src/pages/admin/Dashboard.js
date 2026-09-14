@@ -35,7 +35,7 @@ function Dashboard() {
 
   const loadCities = async () => {
     try {
-      const response = await getCities();
+      const response = await getCities({ limit: 2000 });
       setCities(response.data.data);
       setFilteredCities(response.data.data);
     } catch (err) {
