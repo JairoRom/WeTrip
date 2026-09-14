@@ -1,17 +1,42 @@
 import { City } from '../models/index.js';
 
-// Obtener todas las ciudades (público)
+// Obtener todas las ciudades (público, con paginación y búsqueda)
 export const getCities = async (req, res) => {
   try {
-    const cities = await City.findAll({
-      where: { active: true },
-      order: [['name', 'ASC']]
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 20;
+    const search = req.query.search || '';
+    const offset = (page - 1) * limit;
+
+    // Construir filtro de búsqueda
+    const where = { active: true };
+    if (search) {
+      const { Op } = await import('sequelize');
+      where[Op.or] = [
+        { name: { [Op.like]: `%${search}%` } },
+        { country: { [Op.like]: `%${search}%` } }
+      ];
+    }
+
+    const { count, rows } = await City.findAndCountAll({
+      where,
+      order: [['name', 'ASC']],
+      limit,
+      offset
     });
+
     res.json({
       success: true,
-      data: cities
+      data: rows,
+      pagination: {
+        total: count,
+        totalPages: Math.ceil(count / limit),
+        currentPage: page,
+        limit
+      }
     });
   } catch (error) {
+    console.error('Error en getCities:', error);
     res.status(500).json({
       success: false,
       message: 'Error al obtener ciudades',
