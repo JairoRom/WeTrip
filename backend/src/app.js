@@ -9,6 +9,8 @@ import cityRoutes from './routes/cityRoutes.js';
 import placeRoutes from './routes/placeRoutes.js';
 import weatherRoutes from './routes/weatherRoutes.js';
 import cityDetailRoutes from './routes/cityDetailRoutes.js';
+import userRoutes from './routes/userRoutes.js';
+import favoriteRoutes from './routes/favoriteRoutes.js';
 
 dotenv.config();
 
@@ -38,6 +40,8 @@ app.use('/api/cities', cityRoutes);
 app.use('/api/places', placeRoutes);
 app.use('/api/weather', weatherRoutes);
 app.use('/api/city-detail', cityDetailRoutes);
+app.use('/api/users', userRoutes);
+app.use('/api/favorites', favoriteRoutes);
 
 // Iniciar servidor
 const startServer = async () => {

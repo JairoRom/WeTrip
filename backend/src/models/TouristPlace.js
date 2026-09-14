@@ -1,12 +1,15 @@
 import { DataTypes } from 'sequelize';
 import sequelize from '../config/database.js';
-import City from './City.js';
 
 const TouristPlace = sequelize.define('TouristPlace', {
   id: {
     type: DataTypes.INTEGER,
     primaryKey: true,
     autoIncrement: true
+  },
+  cityId: {
+    type: DataTypes.INTEGER,
+    allowNull: false
   },
   name: {
     type: DataTypes.STRING(150),
@@ -59,17 +62,6 @@ const TouristPlace = sequelize.define('TouristPlace', {
   }
 }, {
   timestamps: true
-});
-
-// Relaciones
-TouristPlace.belongsTo(City, {
-  foreignKey: 'cityId',
-  as: 'city'
-});
-
-City.hasMany(TouristPlace, {
-  foreignKey: 'cityId',
-  as: 'places'
 });
 
 export default TouristPlace;
