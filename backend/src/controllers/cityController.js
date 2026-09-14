@@ -4,9 +4,19 @@ import { City } from '../models/index.js';
 export const getCities = async (req, res) => {
   try {
     const page = parseInt(req.query.page) || 1;
-    const limit = parseInt(req.query.limit) || 20;
     const search = req.query.search || '';
-    const offset = (page - 1) * limit;
+    
+    // Si limit=all o limit=0, devolver TODAS las ciudades (sin paginación)
+    const returnAll = req.query.limit === 'all' || req.query.limit === '0';
+    
+    let limit, offset;
+    if (returnAll) {
+      limit = null; // Sin límite
+      offset = null;
+    } else {
+      limit = parseInt(req.query.limit) || 20;
+      offset = (page - 1) * limit;
+    }
 
     // Construir filtro de búsqueda
     const where = { active: true };
@@ -18,21 +28,26 @@ export const getCities = async (req, res) => {
       ];
     }
 
-    const { count, rows } = await City.findAndCountAll({
+    const queryOptions = {
       where,
-      order: [['name', 'ASC']],
-      limit,
-      offset
-    });
+      order: [['name', 'ASC']]
+    };
+
+    if (!returnAll) {
+      queryOptions.limit = limit;
+      queryOptions.offset = offset;
+    }
+
+    const { count, rows } = await City.findAndCountAll(queryOptions);
 
     res.json({
       success: true,
       data: rows,
       pagination: {
         total: count,
-        totalPages: Math.ceil(count / limit),
-        currentPage: page,
-        limit
+        totalPages: returnAll ? 1 : Math.ceil(count / limit),
+        currentPage: returnAll ? 1 : page,
+        limit: returnAll ? count : limit
       }
     });
   } catch (error) {

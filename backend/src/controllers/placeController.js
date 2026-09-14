@@ -238,3 +238,33 @@ export const importPlacesFromOSM = async (req, res) => {
     });
   }
 };
+
+// Obtener un lugar por ID (público)
+export const getPlaceById = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const place = await TouristPlace.findByPk(id, {
+      include: [{ model: City, as: 'city' }]
+    });
+
+    if (!place) {
+      return res.status(404).json({
+        success: false,
+        message: 'Lugar turístico no encontrado'
+      });
+    }
+
+    res.json({
+      success: true,
+      data: place
+    });
+  } catch (error) {
+    console.error('Error al obtener lugar:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error al obtener lugar',
+      error: error.message
+    });
+  }
+};
