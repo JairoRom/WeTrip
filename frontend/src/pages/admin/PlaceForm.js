@@ -1,6 +1,6 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
-import { createPlace, updatePlace, getPlacesByCity, getCities } from '../../services/api';
+import { createPlace, updatePlace, getCities, getPlaceById } from '../../services/api';
 
 function PlaceForm() {
   const { id } = useParams();
@@ -19,41 +19,107 @@ function PlaceForm() {
     longitude: '',
     rating: ''
   });
-  const [cities, setCities] = useState([]);
+
+  // Estado para el buscador de ciudades
+  const [citySearch, setCitySearch] = useState('');
+  const [cityResults, setCityResults] = useState([]);
+  const [selectedCityName, setSelectedCityName] = useState('');
+  const [showDropdown, setShowDropdown] = useState(false);
+  const [searchingCities, setSearchingCities] = useState(false);
+  const dropdownRef = useRef(null);
+
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(false);
 
+  // Cargar datos iniciales
   useEffect(() => {
     const loadData = async () => {
       try {
-        // Cargar ciudades
-        const response = await getCities();
-        setCities(response.data.data);
-
-        // Si venimos con ?cityId=X en la URL, preseleccionar esa ciudad
+        // Si venimos con ?cityId=X, cargar esa ciudad
         const cityIdFromUrl = searchParams.get('cityId');
         if (cityIdFromUrl && !isEdit) {
           setForm(prev => ({ ...prev, cityId: cityIdFromUrl }));
+          const res = await getCities({ limit: 'all' });
+          const city = res.data.data.find(c => c.id === parseInt(cityIdFromUrl));
+          if (city) setSelectedCityName(`${city.name} (${city.country})`);
         }
 
-        // Si estamos editando, cargar el lugar
+        // Si estamos editando, cargar el lugar por su ID
         if (isEdit) {
-          const cityId = localStorage.getItem('editingPlaceCityId');
-          if (cityId) {
-            const placesResponse = await getPlacesByCity(cityId);
-            const place = placesResponse.data.data.find(p => p.id === parseInt(id));
-            if (place) setForm(place);
+          try {
+            const res = await getPlaceById(id);
+            const place = res.data.data;
+
+            setForm({
+              cityId: place.cityId || '',
+              name: place.name || '',
+              description: place.description || '',
+              address: place.address || '',
+              category: place.category || 'Monumento',
+              image: place.image || '',
+              latitude: place.latitude || '',
+              longitude: place.longitude || '',
+              rating: place.rating || ''
+            });
+
+            if (place.city) {
+              setSelectedCityName(`${place.city.name} (${place.city.country})`);
+            } else {
+              setSelectedCityName(`Ciudad ID: ${place.cityId}`);
+            }
+          } catch (err) {
+            console.error('Error cargando lugar:', err);
+            setError('No se pudo cargar el lugar');
           }
         }
       } catch (err) {
         console.error('Error cargando datos:', err);
-        setError('Error al cargar los datos');
       }
     };
-
     loadData();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
+
+  // Buscar ciudades con debounce
+  useEffect(() => {
+    if (!citySearch || citySearch.length < 2) {
+      setCityResults([]);
+      return;
+    }
+
+    const timer = setTimeout(async () => {
+      setSearchingCities(true);
+      try {
+        const res = await getCities({ search: citySearch, limit: 20 });
+        setCityResults(res.data.data);
+        setShowDropdown(true);
+      } catch (err) {
+        console.error('Error buscando ciudades:', err);
+      } finally {
+        setSearchingCities(false);
+      }
+    }, 300);
+
+    return () => clearTimeout(timer);
+  }, [citySearch]);
+
+  // Cerrar dropdown al hacer clic fuera
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
+        setShowDropdown(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const handleSelectCity = (city) => {
+    setForm(prev => ({ ...prev, cityId: city.id }));
+    setSelectedCityName(`${city.name} (${city.country})`);
+    setCitySearch('');
+    setShowDropdown(false);
+  };
 
   const handleChange = (e) => {
     setForm({ ...form, [e.target.name]: e.target.value });
@@ -61,6 +127,10 @@ function PlaceForm() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (!form.cityId) {
+      setError('Debes seleccionar una ciudad');
+      return;
+    }
     setLoading(true);
     setError(null);
     try {
@@ -83,35 +153,126 @@ function PlaceForm() {
     <div className="admin-form">
       <h1>{isEdit ? '✏️ Editar Lugar Turístico' : '➕ Nuevo Lugar Turístico'}</h1>
       <form onSubmit={handleSubmit}>
-        <div className="form-group">
+
+        {/* Buscador de ciudades con autocompletado */}
+        <div className="form-group" ref={dropdownRef} style={{ position: 'relative' }}>
           <label>Ciudad *</label>
-          <select name="cityId" value={form.cityId || ''} onChange={handleChange} required>
-            <option value="">-- Selecciona una ciudad --</option>
-            {cities.map((city) => (
-              <option key={city.id} value={city.id}>{city.name} ({city.country})</option>
-            ))}
-          </select>
+
+          {form.cityId && !isEdit ? (
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.5rem',
+              padding: '0.75rem',
+              background: '#f0f9ff',
+              border: '1px solid #3b82f6',
+              borderRadius: '6px'
+            }}>
+              <span style={{ flex: 1 }}>
+                📍 <strong>{selectedCityName}</strong>
+              </span>
+              <button
+                type="button"
+                onClick={() => {
+                  setForm(prev => ({ ...prev, cityId: '' }));
+                  setSelectedCityName('');
+                }}
+                style={{
+                  background: 'transparent',
+                  border: 'none',
+                  color: '#dc2626',
+                  cursor: 'pointer',
+                  fontSize: '1.2rem'
+                }}
+                title="Cambiar ciudad"
+              >
+                ✖
+              </button>
+            </div>
+          ) : form.cityId && isEdit ? (
+            <div style={{
+              padding: '0.75rem',
+              background: '#f0f9ff',
+              border: '1px solid #3b82f6',
+              borderRadius: '6px'
+            }}>
+              📍 <strong>{selectedCityName}</strong>
+            </div>
+          ) : (
+            <>
+              <input
+                type="text"
+                placeholder="Escribe al menos 2 letras para buscar..."
+                value={citySearch}
+                onChange={(e) => setCitySearch(e.target.value)}
+                onFocus={() => cityResults.length > 0 && setShowDropdown(true)}
+                autoComplete="off"
+              />
+              {searchingCities && (
+                <small style={{ color: '#666' }}>Buscando...</small>
+              )}
+              {showDropdown && cityResults.length > 0 && (
+                <div style={{
+                  position: 'absolute',
+                  top: '100%',
+                  left: 0,
+                  right: 0,
+                  background: 'white',
+                  border: '1px solid #ddd',
+                  borderRadius: '6px',
+                  boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
+                  maxHeight: '300px',
+                  overflowY: 'auto',
+                  zIndex: 1000,
+                  marginTop: '4px'
+                }}>
+                  {cityResults.map(city => (
+                    <div
+                      key={city.id}
+                      onClick={() => handleSelectCity(city)}
+                      style={{
+                        padding: '0.75rem 1rem',
+                        cursor: 'pointer',
+                        borderBottom: '1px solid #f0f0f0'
+                      }}
+                      onMouseEnter={(e) => e.currentTarget.style.background = '#f0f9ff'}
+                      onMouseLeave={(e) => e.currentTarget.style.background = 'white'}
+                    >
+                      📍 <strong>{city.name}</strong> <span style={{ color: '#666' }}>({city.country})</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+              {showDropdown && citySearch.length >= 2 && !searchingCities && cityResults.length === 0 && (
+                <small style={{ color: '#dc2626' }}>No se encontraron ciudades</small>
+              )}
+            </>
+          )}
         </div>
+
         <div className="form-group">
           <label>Nombre *</label>
           <input name="name" value={form.name || ''} onChange={handleChange} required />
         </div>
+
         <div className="form-group">
           <label>Descripción</label>
           <textarea name="description" value={form.description || ''} onChange={handleChange} rows="4" />
         </div>
+
         <div className="form-group">
           <label>Dirección (recomendado)</label>
-          <input 
-            name="address" 
-            value={form.address || ''} 
-            onChange={handleChange} 
+          <input
+            name="address"
+            value={form.address || ''}
+            onChange={handleChange}
             placeholder="Ej: Calle Gran Vía, 1, Madrid, España"
           />
           <small style={{ color: '#666' }}>
             Si la dirección es válida, se buscarán las coordenadas automáticamente.
           </small>
         </div>
+
         <div className="form-group">
           <label>Categoría</label>
           <select name="category" value={form.category || 'Monumento'} onChange={handleChange}>
@@ -120,10 +281,12 @@ function PlaceForm() {
             ))}
           </select>
         </div>
+
         <div className="form-group">
           <label>URL de imagen</label>
           <input name="image" value={form.image || ''} onChange={handleChange} placeholder="https://..." />
         </div>
+
         <div className="form-row">
           <div className="form-group">
             <label>Latitud (opcional)</label>
@@ -138,7 +301,9 @@ function PlaceForm() {
             <input name="rating" value={form.rating || ''} onChange={handleChange} type="number" step="0.1" min="0" max="5" />
           </div>
         </div>
+
         {error && <p className="error">{error}</p>}
+
         <div className="form-actions">
           <button type="button" onClick={() => navigate('/admin')} className="btn-secondary">
             Cancelar

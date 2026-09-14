@@ -24,6 +24,7 @@ export const getCityById = (id) => api.get(`/cities/${id}`);
 export const getCityDetail = (id) => api.get(`/city-detail/${id}`);
 export const getWeather = (city) => api.get(`/weather/${city}`);
 export const getPlacesByCity = (cityId) => api.get(`/places/city/${cityId}`);
+export const getPlaceById = (id) => api.get(`/places/${id}`);
 
 // AUTENTICACIÓN
 export const register = (data) => api.post('/auth/register', data);

@@ -35,7 +35,7 @@ function Dashboard() {
 
   const loadCities = async () => {
     try {
-      const response = await getCities({ limit: 2000 });
+      const response = await getCities({ limit: 'all' });
       setCities(response.data.data);
       setFilteredCities(response.data.data);
     } catch (err) {
@@ -130,7 +130,6 @@ function Dashboard() {
             <table className="admin-table">
               <thead>
                 <tr>
-                  <th>ID</th>
                   <th>Nombre</th>
                   <th>País</th>
                   <th>Acciones</th>
@@ -139,7 +138,6 @@ function Dashboard() {
               <tbody>
                 {filteredCities.map((city) => (
                   <tr key={city.id} className={selectedCity === city.id ? 'selected-row' : ''}>
-                    <td>{city.id}</td>
                     <td>{city.name}</td>
                     <td>{city.country}</td>
                     <td>
@@ -177,7 +175,6 @@ function Dashboard() {
             <table className="admin-table">
               <thead>
                 <tr>
-                  <th>ID</th>
                   <th>Nombre</th>
                   <th>Categoría</th>
                   <th>Rating</th>
@@ -188,7 +185,6 @@ function Dashboard() {
               <tbody>
                 {places.map((place) => (
                   <tr key={place.id}>
-                    <td>{place.id}</td>
                     <td>{place.name}</td>
                     <td>{place.category}</td>
                     <td>{place.rating || '-'}</td>
