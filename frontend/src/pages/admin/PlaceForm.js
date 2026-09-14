@@ -1,9 +1,10 @@
 import React, { useEffect, useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { createPlace, updatePlace, getPlacesByCity, getCities } from '../../services/api';
 
 function PlaceForm() {
   const { id } = useParams();
+  const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const isEdit = Boolean(id);
 
@@ -23,17 +24,36 @@ function PlaceForm() {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    loadCities();
-  }, []);
+    const loadData = async () => {
+      try {
+        // Cargar ciudades
+        const response = await getCities();
+        setCities(response.data.data);
 
-  const loadCities = async () => {
-    try {
-      const response = await getCities();
-      setCities(response.data.data);
-    } catch (err) {
-      console.error(err);
-    }
-  };
+        // Si venimos con ?cityId=X en la URL, preseleccionar esa ciudad
+        const cityIdFromUrl = searchParams.get('cityId');
+        if (cityIdFromUrl && !isEdit) {
+          setForm(prev => ({ ...prev, cityId: cityIdFromUrl }));
+        }
+
+        // Si estamos editando, cargar el lugar
+        if (isEdit) {
+          const cityId = localStorage.getItem('editingPlaceCityId');
+          if (cityId) {
+            const placesResponse = await getPlacesByCity(cityId);
+            const place = placesResponse.data.data.find(p => p.id === parseInt(id));
+            if (place) setForm(place);
+          }
+        }
+      } catch (err) {
+        console.error('Error cargando datos:', err);
+        setError('Error al cargar los datos');
+      }
+    };
+
+    loadData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id]);
 
   const handleChange = (e) => {
     setForm({ ...form, [e.target.name]: e.target.value });
@@ -81,8 +101,16 @@ function PlaceForm() {
           <textarea name="description" value={form.description || ''} onChange={handleChange} rows="4" />
         </div>
         <div className="form-group">
-          <label>Dirección</label>
-          <input name="address" value={form.address || ''} onChange={handleChange} />
+          <label>Dirección (recomendado)</label>
+          <input 
+            name="address" 
+            value={form.address || ''} 
+            onChange={handleChange} 
+            placeholder="Ej: Calle Gran Vía, 1, Madrid, España"
+          />
+          <small style={{ color: '#666' }}>
+            Si la dirección es válida, se buscarán las coordenadas automáticamente.
+          </small>
         </div>
         <div className="form-group">
           <label>Categoría</label>
@@ -98,11 +126,11 @@ function PlaceForm() {
         </div>
         <div className="form-row">
           <div className="form-group">
-            <label>Latitud</label>
+            <label>Latitud (opcional)</label>
             <input name="latitude" value={form.latitude || ''} onChange={handleChange} type="number" step="any" />
           </div>
           <div className="form-group">
-            <label>Longitud</label>
+            <label>Longitud (opcional)</label>
             <input name="longitude" value={form.longitude || ''} onChange={handleChange} type="number" step="any" />
           </div>
           <div className="form-group">

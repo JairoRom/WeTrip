@@ -4,6 +4,8 @@ import { getCities, deleteCity, getPlacesByCity, deletePlace, togglePlace } from
 
 function Dashboard() {
   const [cities, setCities] = useState([]);
+  const [filteredCities, setFilteredCities] = useState([]);
+  const [search, setSearch] = useState('');
   const [selectedCity, setSelectedCity] = useState(null);
   const [places, setPlaces] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -18,10 +20,24 @@ function Dashboard() {
     loadCities();
   }, [navigate]);
 
+  // Filtrar ciudades cuando cambia la búsqueda
+  useEffect(() => {
+    if (!search) {
+      setFilteredCities(cities);
+    } else {
+      const filtered = cities.filter(city =>
+        city.name.toLowerCase().includes(search.toLowerCase()) ||
+        city.country.toLowerCase().includes(search.toLowerCase())
+      );
+      setFilteredCities(filtered);
+    }
+  }, [search, cities]);
+
   const loadCities = async () => {
     try {
       const response = await getCities();
       setCities(response.data.data);
+      setFilteredCities(response.data.data);
     } catch (err) {
       console.error(err);
     } finally {
@@ -34,6 +50,11 @@ function Dashboard() {
       const response = await getPlacesByCity(cityId);
       setPlaces(response.data.data);
       setSelectedCity(cityId);
+
+      // Auto-scroll a la sección de lugares
+      setTimeout(() => {
+        document.getElementById('places-section')?.scrollIntoView({ behavior: 'smooth' });
+      }, 150);
     } catch (err) {
       console.error(err);
     }
@@ -79,48 +100,76 @@ function Dashboard() {
 
       <section>
         <div className="section-header">
-          <h2>Ciudades ({cities.length})</h2>
-          <Link to="/admin/cities/new" className="btn-primary">➕ Nueva Ciudad</Link>
+          <h2>Ciudades ({filteredCities.length} de {cities.length})</h2>
+          <Link to="/admin/cities/new" className="btn-primary" style={{ textDecoration: 'none', color: 'white' }}>
+            ➕ Nueva Ciudad
+          </Link>
         </div>
+
+        {/* Buscador de ciudades */}
+        <div style={{ marginBottom: '1rem' }}>
+          <input
+            type="text"
+            placeholder="🔍 Buscar ciudad por nombre o país..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            style={{
+              width: '100%',
+              padding: '0.75rem 1rem',
+              borderRadius: '8px',
+              border: '1px solid #ddd',
+              fontSize: '1rem'
+            }}
+          />
+        </div>
+
         {loading ? (
-          <p>Cargando...</p>
+          <p>Cargando ciudades...</p>
         ) : (
-          <table className="admin-table">
-            <thead>
-              <tr>
-                <th>ID</th>
-                <th>Nombre</th>
-                <th>País</th>
-                <th>Acciones</th>
-              </tr>
-            </thead>
-            <tbody>
-              {cities.map((city) => (
-                <tr key={city.id} className={selectedCity === city.id ? 'selected-row' : ''}>
-                  <td>{city.id}</td>
-                  <td>{city.name}</td>
-                  <td>{city.country}</td>
-                  <td>
-                    <button onClick={() => loadPlaces(city.id)} className="btn-secondary">
-                      Ver Lugares
-                    </button>
-                    <Link to={`/admin/cities/edit/${city.id}`} className="btn-edit">Editar</Link>
-                    <button onClick={() => handleDeleteCity(city.id)} className="btn-danger">
-                      Eliminar
-                    </button>
-                  </td>
+          <div style={{ maxHeight: '500px', overflowY: 'auto', border: '1px solid #eee', borderRadius: '8px' }}>
+            <table className="admin-table">
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>Nombre</th>
+                  <th>País</th>
+                  <th>Acciones</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {filteredCities.map((city) => (
+                  <tr key={city.id} className={selectedCity === city.id ? 'selected-row' : ''}>
+                    <td>{city.id}</td>
+                    <td>{city.name}</td>
+                    <td>{city.country}</td>
+                    <td>
+                      <button onClick={() => loadPlaces(city.id)} className="btn-secondary">
+                        Ver Lugares
+                      </button>
+                      <Link to={`/admin/cities/edit/${city.id}`} className="btn-edit">Editar</Link>
+                      <button onClick={() => handleDeleteCity(city.id)} className="btn-danger">
+                        Eliminar
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         )}
       </section>
 
       {selectedCity && (
-        <section>
+        <section id="places-section" style={{ marginTop: '2rem' }}>
           <div className="section-header">
             <h2>Lugares de {cities.find(c => c.id === selectedCity)?.name} ({places.length})</h2>
-            <Link to="/admin/places/new" className="btn-primary">➕ Nuevo Lugar</Link>
+            <Link
+              to={`/admin/places/new?cityId=${selectedCity}`}
+              className="btn-primary"
+              style={{ textDecoration: 'none', color: 'white' }}
+            >
+              ➕ Nuevo Lugar
+            </Link>
           </div>
           {places.length === 0 ? (
             <p className="no-results">No hay lugares turísticos para esta ciudad</p>
