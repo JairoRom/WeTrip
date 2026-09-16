@@ -56,4 +56,11 @@ export const addFavorite = (cityId) => api.post('/favorites', { cityId });
 export const removeFavorite = (cityId) => api.delete(`/favorites/${cityId}`);
 export const checkFavorite = (cityId) => api.get(`/favorites/check/${cityId}`);
 
+// ============ ETIQUETAS (TAGS) ============
+export const getTags = () => api.get('/tags');
+export const createTag = (data) => api.post('/tags', data);
+export const updateTag = (id, data) => api.put(`/tags/${id}`, data);
+export const deleteTag = (id) => api.delete(`/tags/${id}`);
+export const setPlaceTags = (placeId, tagIds) => api.post(`/tags/place/${placeId}`, { tagIds });
+
 export default api;

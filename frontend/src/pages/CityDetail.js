@@ -137,8 +137,29 @@ function CityDetail() {
                 )}
                 <div className="place-info">
                   <h3>{place.name}</h3>
-                  <span className="place-category">{place.category}</span>
-                  {place.rating && <span className="place-rating">⭐ {place.rating}</span>}
+                  <div style={{ marginBottom: '0.5rem' }}>
+                    <span className="place-category">{place.category}</span>
+                    {place.rating && <span className="place-rating">⭐ {place.rating}</span>}
+                  </div>
+                  {place.tags && place.tags.length > 0 && (
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.3rem', marginBottom: '0.5rem' }}>
+                      {place.tags.map(tag => (
+                        <span
+                          key={tag.id}
+                          style={{
+                            padding: '0.2rem 0.6rem',
+                            borderRadius: '12px',
+                            background: tag.color,
+                            color: 'white',
+                            fontSize: '0.75rem',
+                            fontWeight: 'bold'
+                          }}
+                        >
+                          {tag.name}
+                        </span>
+                      ))}
+                    </div>
+                  )}
                   {place.description && <p>{place.description}</p>}
                   {place.address && <p className="address">📍 {place.address}</p>}
                 </div>

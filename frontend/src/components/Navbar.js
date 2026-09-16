@@ -1,5 +1,6 @@
 import React from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import logo from '../assets/logo-WeTrip.png';
 
 function Navbar() {
   const navigate = useNavigate();
@@ -16,7 +17,11 @@ function Navbar() {
     <nav className="navbar">
       <div className="navbar-container">
         <Link to="/" className="navbar-logo">
-          🌍 WeTrip
+          <img 
+            src={logo} 
+            alt="WeTrip" 
+            style={{ height: '80px', width: 'auto' }}
+          />
         </Link>
         <ul className="navbar-menu">
           <li><Link to="/">Inicio</Link></li>
@@ -27,6 +32,7 @@ function Navbar() {
                 <>
                   <li><Link to="/admin">Admin</Link></li>
                   <li><Link to="/admin/users">Usuarios</Link></li>
+                  <li><Link to="/admin/tags">Etiquetas</Link></li>
                 </>
               )}
               <li>

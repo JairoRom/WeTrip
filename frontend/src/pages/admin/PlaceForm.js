@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
-import { createPlace, updatePlace, getCities, getPlaceById } from '../../services/api';
+import { createPlace, updatePlace, getCities, getPlaceById, getTags } from '../../services/api';
 
 function PlaceForm() {
   const { id } = useParams();
@@ -20,7 +20,11 @@ function PlaceForm() {
     rating: ''
   });
 
-  // Estado para el buscador de ciudades
+  // Etiquetas seleccionadas
+  const [selectedTagIds, setSelectedTagIds] = useState([]);
+  const [availableTags, setAvailableTags] = useState([]);
+
+  // Buscador de ciudades
   const [citySearch, setCitySearch] = useState('');
   const [cityResults, setCityResults] = useState([]);
   const [selectedCityName, setSelectedCityName] = useState('');
@@ -35,7 +39,11 @@ function PlaceForm() {
   useEffect(() => {
     const loadData = async () => {
       try {
-        // Si venimos con ?cityId=X, cargar esa ciudad
+        // Cargar etiquetas disponibles
+        const tagsRes = await getTags();
+        setAvailableTags(tagsRes.data.data.filter(t => t.active));
+
+        // Ciudad desde URL
         const cityIdFromUrl = searchParams.get('cityId');
         if (cityIdFromUrl && !isEdit) {
           setForm(prev => ({ ...prev, cityId: cityIdFromUrl }));
@@ -44,7 +52,7 @@ function PlaceForm() {
           if (city) setSelectedCityName(`${city.name} (${city.country})`);
         }
 
-        // Si estamos editando, cargar el lugar por su ID
+        // Cargar lugar si es edición
         if (isEdit) {
           try {
             const res = await getPlaceById(id);
@@ -61,6 +69,11 @@ function PlaceForm() {
               longitude: place.longitude || '',
               rating: place.rating || ''
             });
+
+            // Etiquetas del lugar
+            if (place.tags && place.tags.length > 0) {
+              setSelectedTagIds(place.tags.map(t => t.id));
+            }
 
             if (place.city) {
               setSelectedCityName(`${place.city.name} (${place.city.country})`);
@@ -125,6 +138,14 @@ function PlaceForm() {
     setForm({ ...form, [e.target.name]: e.target.value });
   };
 
+  const toggleTag = (tagId) => {
+    setSelectedTagIds(prev =>
+      prev.includes(tagId)
+        ? prev.filter(id => id !== tagId)
+        : [...prev, tagId]
+    );
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!form.cityId) {
@@ -134,10 +155,11 @@ function PlaceForm() {
     setLoading(true);
     setError(null);
     try {
+      const payload = { ...form, tagIds: selectedTagIds };
       if (isEdit) {
-        await updatePlace(id, form);
+        await updatePlace(id, payload);
       } else {
-        await createPlace(form);
+        await createPlace(payload);
       }
       navigate('/admin');
     } catch (err) {
@@ -154,11 +176,11 @@ function PlaceForm() {
       <h1>{isEdit ? '✏️ Editar Lugar Turístico' : '➕ Nuevo Lugar Turístico'}</h1>
       <form onSubmit={handleSubmit}>
 
-        {/* Buscador de ciudades con autocompletado */}
+        {/* Buscador de ciudades */}
         <div className="form-group" ref={dropdownRef} style={{ position: 'relative' }}>
           <label>Ciudad *</label>
 
-          {form.cityId && !isEdit ? (
+          {form.cityId ? (
             <div style={{
               display: 'flex',
               alignItems: 'center',
@@ -168,35 +190,18 @@ function PlaceForm() {
               border: '1px solid #3b82f6',
               borderRadius: '6px'
             }}>
-              <span style={{ flex: 1 }}>
-                📍 <strong>{selectedCityName}</strong>
-              </span>
-              <button
-                type="button"
-                onClick={() => {
-                  setForm(prev => ({ ...prev, cityId: '' }));
-                  setSelectedCityName('');
-                }}
-                style={{
-                  background: 'transparent',
-                  border: 'none',
-                  color: '#dc2626',
-                  cursor: 'pointer',
-                  fontSize: '1.2rem'
-                }}
-                title="Cambiar ciudad"
-              >
-                ✖
-              </button>
-            </div>
-          ) : form.cityId && isEdit ? (
-            <div style={{
-              padding: '0.75rem',
-              background: '#f0f9ff',
-              border: '1px solid #3b82f6',
-              borderRadius: '6px'
-            }}>
-              📍 <strong>{selectedCityName}</strong>
+              <span style={{ flex: 1 }}>📍 <strong>{selectedCityName}</strong></span>
+              {!isEdit && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setForm(prev => ({ ...prev, cityId: '' }));
+                    setSelectedCityName('');
+                  }}
+                  style={{ background: 'transparent', border: 'none', color: '#dc2626', cursor: 'pointer', fontSize: '1.2rem' }}
+                  title="Cambiar ciudad"
+                >✖</button>
+              )}
             </div>
           ) : (
             <>
@@ -208,33 +213,19 @@ function PlaceForm() {
                 onFocus={() => cityResults.length > 0 && setShowDropdown(true)}
                 autoComplete="off"
               />
-              {searchingCities && (
-                <small style={{ color: '#666' }}>Buscando...</small>
-              )}
+              {searchingCities && <small style={{ color: '#666' }}>Buscando...</small>}
               {showDropdown && cityResults.length > 0 && (
                 <div style={{
-                  position: 'absolute',
-                  top: '100%',
-                  left: 0,
-                  right: 0,
-                  background: 'white',
-                  border: '1px solid #ddd',
-                  borderRadius: '6px',
-                  boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
-                  maxHeight: '300px',
-                  overflowY: 'auto',
-                  zIndex: 1000,
-                  marginTop: '4px'
+                  position: 'absolute', top: '100%', left: 0, right: 0,
+                  background: 'white', border: '1px solid #ddd', borderRadius: '6px',
+                  boxShadow: '0 4px 12px rgba(0,0,0,0.1)', maxHeight: '300px',
+                  overflowY: 'auto', zIndex: 1000, marginTop: '4px'
                 }}>
                   {cityResults.map(city => (
                     <div
                       key={city.id}
                       onClick={() => handleSelectCity(city)}
-                      style={{
-                        padding: '0.75rem 1rem',
-                        cursor: 'pointer',
-                        borderBottom: '1px solid #f0f0f0'
-                      }}
+                      style={{ padding: '0.75rem 1rem', cursor: 'pointer', borderBottom: '1px solid #f0f0f0' }}
                       onMouseEnter={(e) => e.currentTarget.style.background = '#f0f9ff'}
                       onMouseLeave={(e) => e.currentTarget.style.background = 'white'}
                     >
@@ -280,6 +271,42 @@ function PlaceForm() {
               <option key={cat} value={cat}>{cat}</option>
             ))}
           </select>
+        </div>
+
+        {/* Etiquetas */}
+        <div className="form-group">
+          <label>Etiquetas</label>
+          {availableTags.length === 0 ? (
+            <small style={{ color: '#666' }}>
+              No hay etiquetas disponibles. Puedes crearlas en "Etiquetas" del menú.
+            </small>
+          ) : (
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', marginTop: '0.5rem' }}>
+              {availableTags.map(tag => {
+                const isSelected = selectedTagIds.includes(tag.id);
+                return (
+                  <button
+                    key={tag.id}
+                    type="button"
+                    onClick={() => toggleTag(tag.id)}
+                    style={{
+                      padding: '0.4rem 0.9rem',
+                      borderRadius: '20px',
+                      border: `2px solid ${tag.color}`,
+                      background: isSelected ? tag.color : 'white',
+                      color: isSelected ? 'white' : tag.color,
+                      cursor: 'pointer',
+                      fontWeight: 'bold',
+                      fontSize: '0.9rem',
+                      transition: 'all 0.2s'
+                    }}
+                  >
+                    {isSelected ? '✓ ' : ''}{tag.name}
+                  </button>
+                );
+              })}
+            </div>
+          )}
         </div>
 
         <div className="form-group">

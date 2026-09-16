@@ -27,10 +27,18 @@ body {
 }
 
 .navbar-logo {
+  display: flex;
+  align-items: center;
   color: white;
   text-decoration: none;
   font-size: 1.5rem;
   font-weight: bold;
+}
+
+.navbar-logo img {
+  height: 40px;
+  width: auto;
+  object-fit: contain;
 }
 
 .navbar-menu {
@@ -283,17 +291,64 @@ body {
   text-decoration: none;
 }
 
+/* Botones unificados del admin */
+.btn-secondary,
+.btn-edit,
+.btn-danger {
+  display: inline-block;
+  padding: 0.5rem 1rem;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  font-weight: 500;
+  text-decoration: none;
+  text-align: center;
+  margin-right: 0.4rem;
+  margin-bottom: 0.2rem;
+  vertical-align: middle;
+  transition: all 0.2s;
+  min-width: 90px;
+  font-family: inherit;
+  line-height: 1.2;
+}
+
+.btn-secondary {
+  background: #e5e7eb;
+  color: #333;
+}
+
+.btn-secondary:hover {
+  background: #d1d5db;
+}
+
+.btn-edit {
+  background: #3b82f6;
+  color: white;
+}
+
+.btn-edit:hover {
+  background: #2563eb;
+}
+
 .btn-danger {
   background: #dc2626;
   color: white;
-  border: none;
-  padding: 0.5rem 1rem;
-  border-radius: 6px;
-  cursor: pointer;
+}
+
+.btn-danger:hover {
+  background: #b91c1c;
+}
+
+.btn-secondary:disabled,
+.btn-edit:disabled,
+.btn-danger:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 /* Admin */
-.admin-table {
+.admin-tabl.btn-e {
   width: 100%;
   background: white;
   border-radius: 12px;

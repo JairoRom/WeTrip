@@ -9,6 +9,7 @@ import CityForm from './pages/admin/CityForm';
 import PlaceForm from './pages/admin/PlaceForm';
 import UsersManagement from './pages/admin/UsersManagement';
 import MyFavorites from './pages/MyFavorites';
+import TagsManagement from './pages/admin/TagsManagement';
 import './App.css';
 
 function App() {
@@ -27,6 +28,7 @@ function App() {
           <Route path="/admin/places/edit/:id" element={<PlaceForm />} />
           <Route path="/admin/users" element={<UsersManagement />} />
           <Route path="/favorites" element={<MyFavorites />} />
+          <Route path="/admin/tags" element={<TagsManagement />} />
         </Routes>
       </main>
     </Router>
