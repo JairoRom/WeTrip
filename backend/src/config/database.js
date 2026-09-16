@@ -16,7 +16,7 @@ const sequelize = new Sequelize(
       timestamps: true,
       underscored: true,
       charset: 'utf8mb4',
-      collate: 'utf8mb4_unicode_ci'
+      collate: 'utf8mb4_general_ci'
     },
     dialectOptions: {
       charset: 'utf8mb4'
