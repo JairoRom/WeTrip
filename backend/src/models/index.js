@@ -3,10 +3,12 @@ import User from './User.js';
 import City from './City.js';
 import TouristPlace from './TouristPlace.js';
 import Favorite from './Favorite.js';
+import Tag from './Tag.js';
+import PlaceTag from './PlaceTag.js';
 
 // ============ ASOCIACIONES ============
 
-// User ↔ City (favoritos, relación muchos-a-muchos)
+// User ↔ City (favoritos)
 User.belongsToMany(City, {
   through: Favorite,
   foreignKey: 'userId',
@@ -21,18 +23,10 @@ City.belongsToMany(User, {
   as: 'favoritedBy'
 });
 
-// Favorite → User y Favorite → City (asociaciones directas, necesarias para include)
-Favorite.belongsTo(User, {
-  foreignKey: 'userId',
-  as: 'user'
-});
+Favorite.belongsTo(User, { foreignKey: 'userId', as: 'user' });
+Favorite.belongsTo(City, { foreignKey: 'cityId', as: 'city' });
 
-Favorite.belongsTo(City, {
-  foreignKey: 'cityId',
-  as: 'city'
-});
-
-// City ↔ TouristPlace (una ciudad tiene muchos lugares)
+// City ↔ TouristPlace
 City.hasMany(TouristPlace, {
   foreignKey: 'cityId',
   as: 'places'
@@ -43,13 +37,33 @@ TouristPlace.belongsTo(City, {
   as: 'city'
 });
 
+// TouristPlace ↔ Tag (muchos-a-muchos)
+TouristPlace.belongsToMany(Tag, {
+  through: PlaceTag,
+  foreignKey: 'placeId',
+  otherKey: 'tagId',
+  as: 'tags'
+});
+
+Tag.belongsToMany(TouristPlace, {
+  through: PlaceTag,
+  foreignKey: 'tagId',
+  otherKey: 'placeId',
+  as: 'places'
+});
+
+PlaceTag.belongsTo(TouristPlace, { foreignKey: 'placeId', as: 'place' });
+PlaceTag.belongsTo(Tag, { foreignKey: 'tagId', as: 'tag' });
+
 // ============ EXPORTS ============
 export {
   sequelize,
   User,
   City,
   TouristPlace,
-  Favorite
+  Favorite,
+  Tag,
+  PlaceTag
 };
 
 // ============ SYNC ============

@@ -1,4 +1,4 @@
-import { TouristPlace, City } from '../models/index.js';
+import { TouristPlace, City, Tag, PlaceTag } from '../models/index.js';
 import { findTouristPlaces } from '../services/overpassService.js';
 import { getCoordinatesFromAddress } from '../services/geocodingService.js';
 
@@ -9,15 +9,15 @@ export const getPlacesByCity = async (req, res) => {
     
     const places = await TouristPlace.findAll({
       where: { cityId, active: true },
-      include: [{ model: City, as: 'city' }],
+      include: [
+        { model: City, as: 'city' },
+        { model: Tag, as: 'tags', through: { attributes: [] } }
+      ],
       order: [['rating', 'DESC']],
       limit: 3
     });
     
-    res.json({
-      success: true,
-      data: places
-    });
+    res.json({ success: true, data: places });
   } catch (error) {
     res.status(500).json({
       success: false,
@@ -27,16 +27,43 @@ export const getPlacesByCity = async (req, res) => {
   }
 };
 
-// Crear lugar turístico (solo admin)
+// Obtener un lugar por ID (público)
+export const getPlaceById = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const place = await TouristPlace.findByPk(id, {
+      include: [
+        { model: City, as: 'city' },
+        { model: Tag, as: 'tags', through: { attributes: [] } }
+      ]
+    });
+
+    if (!place) {
+      return res.status(404).json({
+        success: false,
+        message: 'Lugar turístico no encontrado'
+      });
+    }
+
+    res.json({ success: true, data: place });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: 'Error al obtener lugar',
+      error: error.message
+    });
+  }
+};
+
 // Crear lugar turístico (solo admin)
 export const createPlace = async (req, res) => {
   try {
-    let { cityId, name, description, address, category, image, latitude, longitude, rating } = req.body;
+    let { cityId, name, description, address, category, image, latitude, longitude, rating, tagIds } = req.body;
 
-    // Si no se proporcionan coordenadas pero sí una dirección, geocodificamos
+    // Geocodificación si no hay coordenadas
     if ((!latitude || !longitude) && address) {
       try {
-        // Obtener la ciudad para incluirla en la búsqueda
         const city = await City.findByPk(cityId);
         const cityName = city ? city.name : '';
         const countryName = city ? city.country : '';
@@ -46,8 +73,6 @@ export const createPlace = async (req, res) => {
           latitude = coords.latitude;
           longitude = coords.longitude;
           console.log(`📍 Coordenadas asignadas: ${latitude}, ${longitude}`);
-        } else {
-          console.warn(`⚠️ No se pudieron obtener coordenadas para: ${address}`);
         }
       } catch (geoError) {
         console.warn('⚠️ Error en geocodificación:', geoError.message);
@@ -67,10 +92,24 @@ export const createPlace = async (req, res) => {
       active: true
     });
 
+    // Asignar etiquetas si las hay
+    if (tagIds && tagIds.length > 0) {
+      const relations = tagIds.map(tagId => ({ placeId: place.id, tagId }));
+      await PlaceTag.bulkCreate(relations);
+    }
+
+    // Recargar con tags
+    const placeWithTags = await TouristPlace.findByPk(place.id, {
+      include: [
+        { model: City, as: 'city' },
+        { model: Tag, as: 'tags', through: { attributes: [] } }
+      ]
+    });
+
     res.status(201).json({
       success: true,
       message: 'Lugar turístico creado exitosamente',
-      data: place
+      data: placeWithTags
     });
   } catch (error) {
     console.error('Error al crear lugar turístico:', error);
@@ -96,18 +135,24 @@ export const updatePlace = async (req, res) => {
     }
 
     let updateData = { ...req.body };
+    const { tagIds } = updateData;
+    delete updateData.tagIds; // No guardar tagIds en el modelo
 
-    // Si se cambió la dirección y no se proporcionaron nuevas coordenadas, re-geocodificamos
+    // Re-geocodificar si cambió la dirección y no hay nuevas coordenadas
     const addressChanged = updateData.address && updateData.address !== place.address;
     const noCoordsProvided = !updateData.latitude || !updateData.longitude;
 
     if (addressChanged && noCoordsProvided) {
       try {
-        const coords = await getCoordinatesFromAddress(updateData.address);
+        const city = await City.findByPk(place.cityId);
+        const coords = await getCoordinatesFromAddress(
+          updateData.address,
+          city ? city.name : '',
+          city ? city.country : ''
+        );
         if (coords) {
           updateData.latitude = coords.latitude;
           updateData.longitude = coords.longitude;
-          console.log(`📍 Coordenadas actualizadas para "${updateData.address}": ${coords.latitude}, ${coords.longitude}`);
         }
       } catch (geoError) {
         console.warn('⚠️ Error en geocodificación:', geoError.message);
@@ -115,11 +160,28 @@ export const updatePlace = async (req, res) => {
     }
 
     await place.update(updateData);
-    
+
+    // Actualizar etiquetas si se enviaron
+    if (tagIds !== undefined) {
+      await PlaceTag.destroy({ where: { placeId: id } });
+      if (tagIds.length > 0) {
+        const relations = tagIds.map(tagId => ({ placeId: parseInt(id), tagId }));
+        await PlaceTag.bulkCreate(relations);
+      }
+    }
+
+    // Recargar con tags
+    const placeWithTags = await TouristPlace.findByPk(id, {
+      include: [
+        { model: City, as: 'city' },
+        { model: Tag, as: 'tags', through: { attributes: [] } }
+      ]
+    });
+
     res.json({
       success: true,
       message: 'Lugar turístico actualizado exitosamente',
-      data: place
+      data: placeWithTags
     });
   } catch (error) {
     console.error('Error al actualizar lugar turístico:', error);
@@ -174,6 +236,8 @@ export const deletePlace = async (req, res) => {
       });
     }
     
+    // Eliminar relaciones con tags primero
+    await PlaceTag.destroy({ where: { placeId: id } });
     await place.destroy();
     
     res.json({
@@ -189,7 +253,7 @@ export const deletePlace = async (req, res) => {
   }
 };
 
-// Importar lugares desde OpenStreetMap (Overpass API) - solo admin
+// Importar lugares desde OpenStreetMap (solo admin)
 export const importPlacesFromOSM = async (req, res) => {
   try {
     const { cityId } = req.params;
@@ -202,7 +266,6 @@ export const importPlacesFromOSM = async (req, res) => {
       });
     }
 
-    // Buscar lugares en OpenStreetMap
     const placesData = await findTouristPlaces(latitude, longitude);
 
     if (placesData.length === 0) {
@@ -213,10 +276,8 @@ export const importPlacesFromOSM = async (req, res) => {
       });
     }
 
-    // Insertar los lugares en nuestra base de datos
     const insertedPlaces = [];
     for (const place of placesData) {
-      // Evitar duplicados por nombre y ciudad
       const [newPlace, created] = await TouristPlace.findOrCreate({
         where: { name: place.name, cityId },
         defaults: { ...place, cityId, active: true }
@@ -235,36 +296,6 @@ export const importPlacesFromOSM = async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Error al importar lugares desde OpenStreetMap.'
-    });
-  }
-};
-
-// Obtener un lugar por ID (público)
-export const getPlaceById = async (req, res) => {
-  try {
-    const { id } = req.params;
-
-    const place = await TouristPlace.findByPk(id, {
-      include: [{ model: City, as: 'city' }]
-    });
-
-    if (!place) {
-      return res.status(404).json({
-        success: false,
-        message: 'Lugar turístico no encontrado'
-      });
-    }
-
-    res.json({
-      success: true,
-      data: place
-    });
-  } catch (error) {
-    console.error('Error al obtener lugar:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Error al obtener lugar',
-      error: error.message
     });
   }
 };

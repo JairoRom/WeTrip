@@ -1,4 +1,4 @@
-import { City, TouristPlace } from '../models/index.js';
+import { City, TouristPlace, Tag } from '../models/index.js';
 import { getWeatherByCity } from '../services/weatherService.js';
 
 export const getCityDetail = async (req, res) => {
@@ -14,7 +14,7 @@ export const getCityDetail = async (req, res) => {
       });
     }
 
-    // 2. Obtener clima actual (usando el nombre de la ciudad)
+    // 2. Obtener clima actual
     let weather = null;
     try {
       weather = await getWeatherByCity(city.name);
@@ -22,9 +22,17 @@ export const getCityDetail = async (req, res) => {
       console.warn('No se pudo obtener clima para:', city.name, '-', error.message);
     }
 
-    // 3. Obtener hasta 3 lugares turísticos activos, ordenados por rating
+    // 3. Obtener hasta 3 lugares turísticos activos CON sus etiquetas
     const places = await TouristPlace.findAll({
       where: { cityId: id, active: true },
+      include: [
+        {
+          model: Tag,
+          as: 'tags',
+          through: { attributes: [] },
+          required: false
+        }
+      ],
       order: [['rating', 'DESC']],
       limit: 3
     });
