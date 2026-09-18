@@ -20,6 +20,15 @@ function CityForm() {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
+    const loadCity = async () => {
+      try {
+        const response = await getCityById(id);
+        setForm(response.data.data);
+      } catch (err) {
+        setError('No se pudo cargar la ciudad');
+      }
+    };
+
     if (isEdit) loadCity();
   }, [id]);
 

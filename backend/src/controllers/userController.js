@@ -22,7 +22,7 @@ export const createUser = async (req, res) => {
   try {
     const { username, email, password, role } = req.body;
 
-    // 🔒 Verificar duplicados
+    // Verificar duplicados
     const existing = await User.findOne({ where: { email } });
     if (existing) {
       return res.status(400).json({
@@ -31,7 +31,7 @@ export const createUser = async (req, res) => {
       });
     }
 
-    // 🔒 PROHIBIR crear admin desde la interfaz
+    // PROHIBIR crear admin desde la interfaz
     if (role === 'admin') {
       return res.status(403).json({
         success: false,
@@ -81,7 +81,7 @@ export const updateUser = async (req, res) => {
       });
     }
 
-    // 🔒 No se puede modificar al admin principal
+    // No se puede modificar al admin principal
     if (user.role === 'admin') {
       return res.status(403).json({
         success: false,
@@ -89,7 +89,7 @@ export const updateUser = async (req, res) => {
       });
     }
 
-    // 🔒 No se puede asignar el rol admin
+    // No se puede asignar el rol admin
     if (role === 'admin') {
       return res.status(403).json({
         success: false,
@@ -125,7 +125,7 @@ export const changeRole = async (req, res) => {
     const { id } = req.params;
     const { role } = req.body;
 
-    // 🔒 Solo permitir viewer o editor
+    // Solo permitir viewer o editor
     if (!['viewer', 'editor'].includes(role)) {
       return res.status(400).json({
         success: false,
@@ -141,7 +141,7 @@ export const changeRole = async (req, res) => {
       });
     }
 
-    // 🔒 No se puede cambiar el rol del admin principal
+    // No se puede cambiar el rol del admin principal
     if (user.role === 'admin') {
       return res.status(403).json({
         success: false,
@@ -170,7 +170,7 @@ export const toggleUser = async (req, res) => {
   try {
     const { id } = req.params;
 
-    // 🔒 No se puede desactivar al admin principal
+    // No se puede desactivar al admin principal
     if (req.user.id === parseInt(id)) {
       return res.status(400).json({
         success: false,
@@ -186,7 +186,7 @@ export const toggleUser = async (req, res) => {
       });
     }
 
-    // 🔒 No se puede desactivar al admin principal
+    // No se puede desactivar al admin principal
     if (user.role === 'admin') {
       return res.status(403).json({
         success: false,
@@ -216,7 +216,7 @@ export const deleteUser = async (req, res) => {
   try {
     const { id } = req.params;
 
-    // 🔒 No se puede eliminar a sí mismo
+    // No se puede eliminar a sí mismo
     if (req.user.id === parseInt(id)) {
       return res.status(400).json({
         success: false,
@@ -232,7 +232,7 @@ export const deleteUser = async (req, res) => {
       });
     }
 
-    // 🔒 No se puede eliminar al admin principal
+    // No se puede eliminar al admin principal
     if (user.role === 'admin') {
       return res.status(403).json({
         success: false,

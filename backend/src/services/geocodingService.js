@@ -37,7 +37,7 @@ export const getCoordinatesFromAddress = async (address, cityName = '', countryN
         'accept-language': 'es'
       },
       headers: {
-        // ⚠️ User-Agent específico y válido (Nominatim lo exige)
+        // User-Agent específico y válido (Nominatim lo exige)
         'User-Agent': 'WeTrip-App/1.0 (https://github.com/JairoRom/WeTrip)'
       },
       timeout: 10000

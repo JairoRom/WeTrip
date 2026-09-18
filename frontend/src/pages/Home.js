@@ -19,7 +19,6 @@ function Home() {
   // Cargar ciudades cuando cambia la página o la búsqueda
   useEffect(() => {
     loadCities(pagination.currentPage, debouncedSearch);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pagination.currentPage, debouncedSearch]);
 
   const loadCities = async (page = 1, searchTerm = '') => {

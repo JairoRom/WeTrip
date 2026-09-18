@@ -138,7 +138,7 @@ export const updatePlace = async (req, res) => {
     const { tagIds } = updateData;
     delete updateData.tagIds; // No guardar tagIds en el modelo
 
-    // Re-geocodificar si cambió la dirección y no hay nuevas coordenadas
+    // Regeocodificar si cambió la dirección y no hay nuevas coordenadas
     const addressChanged = updateData.address && updateData.address !== place.address;
     const noCoordsProvided = !updateData.latitude || !updateData.longitude;
 

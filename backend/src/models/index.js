@@ -8,7 +8,7 @@ import PlaceTag from './PlaceTag.js';
 
 // ============ ASOCIACIONES ============
 
-// User ↔ City (favoritos)
+// User <-> City (favoritos)
 User.belongsToMany(City, {
   through: Favorite,
   foreignKey: 'userId',
